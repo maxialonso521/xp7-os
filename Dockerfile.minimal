@@ -1,0 +1,43 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  XP7 OS — Dockerfile MÍNIMO (para PCs con pocos recursos)  ║
+# ║  Build: docker build -f Dockerfile.minimal -t xp7os .      ║
+# ║  Run:   docker run --rm -v "${PWD}/output:/output" xp7os  ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ─── Toolchain mínimo (sin git, curl, tree, etc) ─────────────
+RUN apt-get update && apt-get install -y \
+    gcc-i686-linux-gnu \
+    binutils-i686-linux-gnu \
+    nasm \
+    make \
+    grub-pc-bin \
+    grub-common \
+    xorriso \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /xp7os
+
+# ─── Copiar SOLO lo necesario ─────────────────────────────────
+COPY Makefile linker.ld ./
+COPY boot/ ./boot/
+COPY kernel/ ./kernel/
+COPY formats/ ./formats/
+
+# ─── Build simple (sin verificaciones extensas) ───────────────
+RUN make clean 2>/dev/null || true \
+ && make all \
+ && make iso
+
+# ─── CMD: Copiar outputs ───────────────────────────────────────
+CMD ["/bin/bash", "-c", "\
+    mkdir -p /output; \
+    cp xp7os.kernel /output/ 2>/dev/null || true; \
+    cp xp7os.iso /output/ 2>/dev/null || true; \
+    echo ''; \
+    echo 'Outputs:'; \
+    ls -lh /output/; \
+    echo ''; \
+"]
